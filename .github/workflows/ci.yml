@@ -4,6 +4,10 @@ name: CI
 # Start from the Actions tab or: gh workflow run ci.yml
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "macOS runner label (macos-15-intel, macos-15, macos-26)"
+        default: macos-15-intel
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,8 +17,8 @@ concurrency:
 jobs:
   test:
     name: Build & test (MTCore, macOS, iPhone, iPad)
-    # macos-26 runners were repeatedly unavailable; macos-15 images ship Xcode 26.
-    runs-on: macos-15
+    # Apple-silicon runners were repeatedly unavailable (capacity); Intel images also ship Xcode 26.
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
