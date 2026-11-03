@@ -10,9 +10,16 @@ sim() {
 }
 
 overall=0
-for platform in macOS iPhone iPad; do
+host_major=$(sw_vers -productVersion | cut -d. -f1)
+for platform in ${PLATFORMS:-macOS iPhone iPad}; do
+  action=test
   if [ "$platform" = macOS ]; then
     dest="platform=macOS"
+    # The app targets macOS 26; on an older runner we can compile but not run the tests.
+    if [ "$host_major" -lt 26 ]; then
+      action=build-for-testing
+      echo "::warning::Runner is macOS $(sw_vers -productVersion): compiling the Mac app and tests only, not running them."
+    fi
   else
     udid=$(sim "$platform")
     if [ -z "$udid" ] || [ "$udid" = null ]; then echo "::error::No $platform simulator found"; overall=1; continue; fi
@@ -20,11 +27,11 @@ for platform in macOS iPhone iPad; do
   fi
   echo "::group::$platform ($dest)"
   status=0
-  xcodebuild test \
+  xcodebuild "$action" \
     -project MeetingTranscriber.xcodeproj \
     -scheme MeetingTranscriber \
     -destination "$dest" \
-    -resultBundlePath "results/$platform.xcresult" \
+    $( [ "$action" = test ] && echo -resultBundlePath "results/$platform.xcresult" ) \
     CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
     < /dev/null > "results/$platform.log" 2>&1 || status=$?
   echo "xcodebuild exit status for $platform: $status"
@@ -38,7 +45,7 @@ for platform in macOS iPhone iPad; do
     grep -v "CoreData: error" "results/$platform.log" | grep -E "error:" | sort -u | head -40 | sed 's/^/::error::/' || true
     overall=1
   else
-    echo "✅ $platform passed"
+    echo "✅ $platform passed ($action)"
   fi
 done
 exit "$overall"
