@@ -1,0 +1,10 @@
+name: Runner smoke test
+# Diagnostic: checks whether hosted runners are being assigned to this repo at all.
+on:
+  workflow_dispatch:
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Linux runner OK"; uname -a
