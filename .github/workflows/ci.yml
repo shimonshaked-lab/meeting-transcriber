@@ -9,58 +9,31 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# One job on one macOS runner (macOS runners are scarce; a matrix needs several at once).
 jobs:
-  core:
-    name: MTCore package tests
+  test:
+    name: Build & test (MTCore, macOS, iPhone, iPad)
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - run: xcodebuild -version
-      - run: swift test --package-path Packages/MTCore
 
-  app:
-    name: App · ${{ matrix.platform }}
-    runs-on: macos-26
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [macOS, iPhone, iPad]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: MTCore package tests
+        run: swift test --package-path Packages/MTCore
+
       - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Pick destination
         run: |
-          set -euo pipefail
-          case "${{ matrix.platform }}" in
-            macOS) echo "DEST=platform=macOS" >> "$GITHUB_ENV" ;;
-            *)
-              udid=$(xcrun simctl list devices available -j | jq -r --arg p "^${{ matrix.platform }}" \
-                '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test($p))] | last | .udid')
-              test -n "$udid" && test "$udid" != "null"
-              echo "Using simulator $udid"
-              echo "DEST=id=$udid" >> "$GITHUB_ENV" ;;
-          esac
-      - name: Build & test
-        run: |
-          status=0
-          xcodebuild test \
-            -project MeetingTranscriber.xcodeproj \
-            -scheme MeetingTranscriber \
-            -destination "$DEST" \
-            -resultBundlePath TestResults.xcresult \
-            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
-            > xcodebuild.log 2>&1 || status=$?
-          grep -E "error:|warning:|Test Case .*(passed|failed)|Executed|\*\* " xcodebuild.log || true
-          if [ "$status" -ne 0 ]; then tail -n 80 xcodebuild.log; fi
-          exit "$status"
+          brew install xcodegen
+          xcodegen generate
+
+      - name: App tests on macOS, iPhone and iPad simulators
+        run: scripts/ci-test.sh
+
       - name: Upload results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.platform }}
+          name: test-results
           path: |
-            TestResults.xcresult
-            xcodebuild.log
+            results/
