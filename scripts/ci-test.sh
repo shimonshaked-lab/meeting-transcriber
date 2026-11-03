@@ -26,12 +26,16 @@ for platform in macOS iPhone iPad; do
     -destination "$dest" \
     -resultBundlePath "results/$platform.xcresult" \
     CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= \
-    > "results/$platform.log" 2>&1 || status=$?
-  grep -E "error:|warning:|Test Case .*(passed|failed)|Executed|\*\* " "results/$platform.log" || true
+    < /dev/null > "results/$platform.log" 2>&1 || status=$?
+  echo "xcodebuild exit status for $platform: $status"
+  grep -v "CoreData: error" "results/$platform.log" \
+    | grep -E "error:|Test Case .*(passed|failed)|Executed|\*\* |XCTAssert" || true
+  echo "--- last 25 lines ---"
+  grep -v "CoreData: error" "results/$platform.log" | tail -n 25 || true
   echo "::endgroup::"
   if [ "$status" -ne 0 ]; then
     echo "::error::$platform failed (exit $status)"
-    grep -E "error:" "results/$platform.log" | sort -u | head -40 | sed 's/^/::error::/'
+    grep -v "CoreData: error" "results/$platform.log" | grep -E "error:" | sort -u | head -40 | sed 's/^/::error::/' || true
     overall=1
   else
     echo "✅ $platform passed"

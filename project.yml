@@ -57,3 +57,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.shimonshaked.MeetingTranscriberTests
+        # Multi-destination target: the host binary lives at a different path inside a Mac .app.
+        "TEST_HOST[sdk=macosx*]": "$(BUILT_PRODUCTS_DIR)/MeetingTranscriber.app/Contents/MacOS/MeetingTranscriber"
+        "TEST_HOST[sdk=iphone*]": "$(BUILT_PRODUCTS_DIR)/MeetingTranscriber.app/MeetingTranscriber"
+        BUNDLE_LOADER: "$(TEST_HOST)"
