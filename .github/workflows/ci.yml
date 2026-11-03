@@ -13,11 +13,19 @@ concurrency:
 jobs:
   test:
     name: Build & test (MTCore, macOS, iPhone, iPad)
-    runs-on: macos-26
+    # macos-26 runners were repeatedly unavailable; macos-15 images ship Xcode 26.
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - run: xcodebuild -version
+      - name: Select newest Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          test -n "$XC" || { echo "::error::No Xcode 26 on this image"; exit 1; }
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+          xcrun simctl list runtimes
 
       - name: MTCore package tests
         run: swift test --package-path Packages/MTCore
