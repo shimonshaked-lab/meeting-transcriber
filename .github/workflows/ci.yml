@@ -1,8 +1,8 @@
 name: CI
 
+# Manual only, to stay within the free macOS minutes (macOS minutes count 10x).
+# Start from the Actions tab or: gh workflow run ci.yml
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 concurrency:
